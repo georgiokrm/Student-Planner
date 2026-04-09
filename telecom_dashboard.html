@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Télécom Paris — Pre-Departure HQ</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--surface:#111118;--surface2:#16161f;--border:#22222e;
+  --text:#e8e8f0;--muted:#5a5a72;--accent:#4f6ef7;--accent2:#7c3aed;
+  --success:#22c55e;--warning:#f59e0b;--danger:#ef4444;
+}
+[data-theme="light"]{
+  --bg:#f0f0f6;--surface:#ffffff;--surface2:#e8e8f2;--border:#d0d0e0;
+  --text:#0a0a1a;--muted:#6060a0;--accent:#3b5cf5;
+}
+body{background:var(--bg);color:var(--text);font-family:ui-monospace,SFMono-Regular,'SF Mono',Consolas,monospace;font-size:14px;min-height:100vh}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--surface)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+#toast{position:fixed;bottom:20px;right:20px;z-index:9999;background:var(--surface);border:1px solid var(--success);border-radius:8px;padding:10px 16px;font-size:12px;color:var(--success);opacity:0;pointer-events:none;transition:opacity .3s}
+#toast.show{opacity:1}
+
+#setup-overlay{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+.setup-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;max-width:460px;width:100%}
+
+.app-header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;position:sticky;top:0;z-index:100}
+.header-inner{display:flex;align-items:center;justify-content:space-between;height:54px;max-width:860px;margin:0 auto}
+
+.tab-bar{display:flex;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border);background:var(--surface);padding:0 12px;position:sticky;top:54px;z-index:99}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab-btn{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;padding:12px 14px;font-family:inherit;font-size:11px;letter-spacing:.5px;white-space:nowrap;transition:color .2s,border-color .2s}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-btn:hover{color:var(--text)}
+
+.main{max-width:860px;margin:0 auto;padding:20px 16px 80px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px}
+.card-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-label{font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
+
+.item-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);transition:background .15s}
+.item-row:last-child{border-bottom:none}
+.item-row:hover{background:var(--surface2)}
+.item-row.done{opacity:.4}
+.item-row.done .item-text{text-decoration:line-through}
+
+.chk{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--muted);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.chk.on{background:var(--accent);border-color:var(--accent)}
+
+.btn{padding:6px 12px;border-radius:6px;border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.3px;transition:all .15s;display:inline-flex;align-items:center;gap:4px}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{filter:brightness(1.2)}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn-ghost:hover{color:var(--text);border-color:var(--muted)}
+.btn-danger{background:transparent;color:var(--danger);border:none;padding:4px 8px}
+.btn-danger:hover{background:rgba(239,68,68,.1)}
+.btn-sm{padding:4px 10px;font-size:10px}
+
+.inp{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 11px;color:var(--text);font-family:inherit;font-size:13px;outline:none;width:100%;transition:border-color .15s}
+.inp:focus{border-color:var(--accent)}
+.inp::placeholder{color:var(--muted)}
+select.inp{cursor:pointer}
+
+.prog-track{background:var(--border);border-radius:2px;height:3px}
+.prog-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .5s ease}
+
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--success);display:inline-block;animation:pulse 2s infinite}
+.sync-dot.syncing{background:var(--warning);animation:none}
+.sync-dot.offline{background:var(--muted);animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;width:100%;max-width:380px}
+
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;padding:9px 14px;font-size:10px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border)}
+.tbl td{padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--surface2)}
+.over{color:var(--danger)}.under{color:var(--success)}
+
+.cd-big{font-size:52px;font-weight:700;color:var(--accent);line-height:1}
+.qadd{display:flex;gap:8px;padding:10px 14px;background:var(--surface2);border-top:1px solid var(--border);flex-wrap:wrap}
+
+@media(max-width:480px){.cd-big{font-size:38px}.main{padding:14px 10px 80px}}
+</style>
+</head>
+<body>
+
+<div id="toast">✓ Saved</div>
+
+<div id="modal" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div id="modal-title" style="font-size:11px;letter-spacing:1px;color:var(--accent);margin-bottom:14px;text-transform:uppercase"></div>
+    <div id="modal-body"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btn-primary" style="flex:1" onclick="modalConfirm()">Save</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="setup-overlay">
+  <div class="setup-card">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:22px">
+      <svg width="36" height="36" viewBox="0 0 36 36"><rect width="36" height="36" rx="7" fill="#e63946"/><text x="5" y="25" font-family="monospace" font-size="15" font-weight="bold" fill="white">TP</text></svg>
+      <div>
+        <div style="font-size:13px;letter-spacing:.5px">TELECOM PARIS</div>
+        <div style="font-size:11px;color:var(--muted)">Pre-Departure HQ</div>
+      </div>
+    </div>
+    <div style="font-size:10px;letter-spacing:1.5px;color:var(--accent);margin-bottom:8px">CLOUD SYNC (OPTIONAL)</div>
+    <p style="color:var(--muted);font-size:12px;line-height:1.7;margin-bottom:16px">
+      Enter your Supabase credentials to sync between laptop and phone. Or click <strong style="color:var(--text)">Use Locally</strong> — data saves in this browser automatically.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+      <div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">PROJECT URL</div>
+        <input id="sb-url" class="inp" placeholder="https://xxxx.supabase.co"/>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">ANON KEY</div>
+        <input id="sb-key" class="inp" placeholder="eyJhbGci..."/>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="initCloud()">Connect Supabase</button>
+      <button class="btn btn-ghost" onclick="initLocal()">Use Locally</button>
+    </div>
+    <details style="margin-top:16px">
+      <summary style="cursor:pointer;font-size:11px;color:var(--accent);user-select:none">Show SQL setup</summary>
+      <pre style="background:var(--bg);border-radius:6px;padding:10px;margin-top:8px;font-size:10px;color:var(--text);overflow-x:auto;line-height:1.6">CREATE TABLE IF NOT EXISTS dashboard_data (
+  id TEXT PRIMARY KEY DEFAULT 'main',
+  data JSONB NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+INSERT INTO dashboard_data (id,data)
+VALUES ('main','{}') ON CONFLICT DO NOTHING;
+ALTER TABLE dashboard_data ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "open" ON dashboard_data
+  FOR ALL USING (true) WITH CHECK (true);</pre>
+    </details>
+  </div>
+</div>
+
+<header class="app-header">
+  <div class="header-inner">
+    <div style="display:flex;align-items:center;gap:9px">
+      <svg width="28" height="28" viewBox="0 0 36 36"><rect width="36" height="36" rx="7" fill="#e63946"/><text x="5" y="25" font-family="monospace" font-size="15" font-weight="bold" fill="white">TP</text></svg>
+      <div>
+        <div style="font-size:11px;letter-spacing:.5px">TELECOM PARIS</div>
+        <div style="font-size:9px;color:var(--muted)">Pre-Departure HQ</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="text-align:right">
+        <div style="font-size:9px;color:var(--muted);margin-bottom:3px"><span id="prog-pct">0</span>% COMPLETE</div>
+        <div class="prog-track" style="width:80px"><div class="prog-fill" id="prog-bar" style="width:0%"></div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px">
+        <span class="sync-dot offline" id="sync-dot"></span>
+        <span style="font-size:9px;color:var(--muted)" id="sync-lbl">LOCAL</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="toggleTheme()" style="padding:4px 8px"><span id="theme-ico">☀</span></button>
+    </div>
+  </div>
+</header>
+
+<nav class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('packing',this)">PACKING</button>
+  <button class="tab-btn" onclick="switchTab('admin',this)">ADMIN VAULT</button>
+  <button class="tab-btn" onclick="switchTab('countdown',this)">COUNTDOWN</button>
+  <button class="tab-btn" onclick="switchTab('ledger',this)">LEDGER</button>
+</nav>
+
+<main class="main">
+  <div id="tab-packing">
+    <div id="packing-cats"></div>
+    <button class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="addPackingCat()">+ New Category</button>
+  </div>
+  <div id="tab-admin" style="display:none">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-label">Documents &amp; Status</span>
+        <button class="btn btn-primary btn-sm" onclick="addAdminItem()">+ Add</button>
+      </div>
+      <div id="admin-list"></div>
+    </div>
+  </div>
+  <div id="tab-countdown" style="display:none">
+    <div class="card" style="padding:24px 20px;margin-bottom:16px">
+      <div style="font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">PRIMARY EVENT</div>
+      <div class="cd-big" id="cd-days">---</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">days remaining</div>
+      <div style="margin-top:12px;font-size:13px" id="cd-label">Set your flight date below</div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-label">Key Dates</span>
+        <button class="btn btn-primary btn-sm" onclick="addCDItem()">+ Add Date</button>
+      </div>
+      <div id="countdown-list"></div>
+    </div>
+  </div>
+  <div id="tab-ledger" style="display:none">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-label">Financial Ledger (EUR)</span>
+        <button class="btn btn-primary btn-sm" onclick="addLedgerItem()">+ Add</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr><th>Item</th><th>Est.</th><th>Actual</th><th>Diff</th><th></th></tr></thead>
+          <tbody id="ledger-list"></tbody>
+          <tfoot id="ledger-foot"></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+var SB_URL='',SB_KEY='',useCloud=false,modalCb=null;
+
+var S={
+  packing:[
+    {id:g(),name:'Electronics',items:[
+      {id:g(),text:'Laptop + charger',done:false},
+      {id:g(),text:'EU plug adapter (Type E)',done:false},
+      {id:g(),text:'Phone + charger',done:false},
+      {id:g(),text:'Power bank',done:false}
+    ]},
+    {id:g(),name:'Academic',items:[
+      {id:g(),text:'Acceptance letter (original)',done:false},
+      {id:g(),text:'Passport + visa copy',done:false},
+      {id:g(),text:'All certified document copies',done:false},
+      {id:g(),text:'USB backup of all scans',done:false}
+    ]},
+    {id:g(),name:'Clothing',items:[
+      {id:g(),text:'Winter coat (Paris gets cold!)',done:false},
+      {id:g(),text:'Waterproof shoes',done:false},
+      {id:g(),text:'Layering clothes / sweaters',done:false}
+    ]},
+    {id:g(),name:'Personal',items:[
+      {id:g(),text:'Medications + French doctor letter',done:false},
+      {id:g(),text:'Lebanese foods/spices from home',done:false},
+      {id:g(),text:'Cash in EUR for arrival',done:false}
+    ]}
+  ],
+  admin:[
+    {id:g(),name:'French Student Visa (Type D)',status:'not-started',notes:'Campus France LB then VFS Global'},
+    {id:g(),name:'Telecom Paris Enrollment',status:'done',notes:'Accepted!'},
+    {id:g(),name:'DELF B2 / French Proficiency Proof',status:'not-started',notes:'Or equivalent'},
+    {id:g(),name:'Health / Travel Insurance',status:'not-started',notes:'Must cover Schengen zone'},
+    {id:g(),name:'CROUS Housing Application',status:'not-started',notes:'messervices.etudiant.gouv.fr'},
+    {id:g(),name:'French Bank Account (Wise/BNP)',status:'not-started',notes:'Open before departure'},
+    {id:g(),name:'CAF Housing Subsidy',status:'not-started',notes:'Apply once you have French address'},
+    {id:g(),name:'Lebanese Docs Certified in French',status:'not-started',notes:'Birth cert + transcripts'}
+  ],
+  countdown:[
+    {id:g(),label:'Flight to Paris',date:'',primary:true},
+    {id:g(),label:'Semester Start',date:'',primary:false},
+    {id:g(),label:'Move-in Date',date:'',primary:false},
+    {id:g(),label:'Visa Appointment',date:'',primary:false}
+  ],
+  ledger:[
+    {id:g(),item:'Flight Ticket BEY to CDG',est:600,act:0},
+    {id:g(),item:'Housing Deposit (1st month)',est:500,act:0},
+    {id:g(),item:'Student Visa Fee',est:99,act:0},
+    {id:g(),item:'Campus France Fee',est:200,act:0},
+    {id:g(),item:'Baggage / Shipping',est:100,act:0},
+    {id:g(),item:'First Month Living Costs',est:800,act:0},
+    {id:g(),item:'French SIM Card',est:20,act:0},
+    {id:g(),item:'Navigo Transit Pass',est:86,act:0}
+  ]
+};
+
+function g(){return Math.random().toString(36).slice(2,9)}
+
+function toast(m){
+  var el=document.getElementById('toast');
+  el.textContent=m||'Saved';el.classList.add('show');
+  setTimeout(function(){el.classList.remove('show')},2200);
+}
+
+function syncUI(s){
+  var dot=document.getElementById('sync-dot');
+  var lbl=document.getElementById('sync-lbl');
+  if(s==='live'){dot.className='sync-dot';lbl.textContent='LIVE'}
+  else if(s==='syncing'){dot.className='sync-dot syncing';lbl.textContent='SAVING'}
+  else{dot.className='sync-dot offline';lbl.textContent='LOCAL'}
+}
+
+function daysUntil(d){
+  if(!d)return null;
+  var now=new Date();now.setHours(0,0,0,0);
+  var t=new Date(d);t.setHours(0,0,0,0);
+  return Math.ceil((t-now)/86400000);
+}
+
+// Storage
+function lSave(){try{localStorage.setItem('tp_hq2',JSON.stringify(S))}catch(e){}}
+function lLoad(){
+  try{
+    var d=localStorage.getItem('tp_hq2');
+    if(d){var p=JSON.parse(d);if(p&&typeof p==='object'){S=p;}}
+  }catch(e){}
+}
+
+// Supabase via plain fetch — no library
+function sbCall(method,body){
+  var headers={
+    'apikey':SB_KEY,
+    'Authorization':'Bearer '+SB_KEY,
+    'Content-Type':'application/json'
+  };
+  if(method==='POST')headers['Prefer']='resolution=merge-duplicates';
+  var opts={method:method,headers:headers};
+  if(body)opts.body=JSON.stringify(body);
+  return fetch(SB_URL+'/rest/v1/dashboard_data?id=eq.main',opts);
+}
+
+function cloudLoad(){
+  return sbCall('GET').then(function(r){
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    return r.json();
+  }).then(function(rows){
+    if(rows&&rows.length>0&&rows[0].data&&Object.keys(rows[0].data).length>0){
+      S=rows[0].data;
+    }
+  });
+}
+
+function cloudSave(){
+  return sbCall('POST',[{id:'main',data:S,updated_at:new Date().toISOString()}])
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status)});
+}
+
+function persist(){
+  syncUI('syncing');
+  if(useCloud){
+    cloudSave().then(function(){
+      lSave();syncUI('live');updateProgress();toast('Saved to cloud');
+    }).catch(function(){
+      lSave();syncUI('offline');updateProgress();toast('Cloud error - saved locally');
+    });
+  } else {
+    lSave();syncUI('offline');updateProgress();toast('Saved');
+  }
+}
+
+// Init
+function initCloud(){
+  var url=document.getElementById('sb-url').value.trim();
+  var key=document.getElementById('sb-key').value.trim();
+  if(!url||!key){alert('Please fill both fields.');return;}
+  if(!url.startsWith('http')){alert('URL must start with https://');return;}
+  SB_URL=url;SB_KEY=key;
+  cloudLoad().then(function(){
+    useCloud=true;
+    localStorage.setItem('sb_url',url);
+    localStorage.setItem('sb_key',key);
+    document.getElementById('setup-overlay').style.display='none';
+    syncUI('live');renderAll();toast('Connected to Supabase!');
+  }).catch(function(e){
+    alert('Connection failed: '+e.message+'\n\nCheck URL and key, or click Use Locally.');
+  });
+}
+
+function initLocal(){
+  lLoad();
+  document.getElementById('setup-overlay').style.display='none';
+  syncUI('offline');renderAll();
+}
+
+// Auto-reconnect
+window.addEventListener('DOMContentLoaded',function(){
+  var url=localStorage.getItem('sb_url');
+  var key=localStorage.getItem('sb_key');
+  if(url&&key){
+    document.getElementById('sb-url').value=url;
+    document.getElementById('sb-key').value=key;
+    SB_URL=url;SB_KEY=key;
+    cloudLoad().then(function(){
+      useCloud=true;
+      document.getElementById('setup-overlay').style.display='none';
+      syncUI('live');renderAll();
+    }).catch(function(){initLocal();});
+  }
+});
+
+function updateProgress(){
+  var items=S.packing.reduce(function(a,c){return a.concat(c.items)},[]);
+  var done=items.filter(function(i){return i.done}).length+
+           S.admin.filter(function(i){return i.status==='done'}).length;
+  var total=items.length+S.admin.length;
+  var pct=total?Math.round(done/total*100):0;
+  document.getElementById('prog-bar').style.width=pct+'%';
+  document.getElementById('prog-pct').textContent=pct;
+}
+
+function toggleTheme(){
+  var dark=document.documentElement.getAttribute('data-theme')==='dark';
+  document.documentElement.setAttribute('data-theme',dark?'light':'dark');
+  document.getElementById('theme-ico').textContent=dark?'Moon':'Sun';
+}
+
+function switchTab(tab,btn){
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active')});
+  btn.classList.add('active');
+  ['packing','admin','countdown','ledger'].forEach(function(t){
+    document.getElementById('tab-'+t).style.display=t===tab?'':'none';
+  });
+  if(tab==='countdown')renderCountdown();
+  if(tab==='ledger')renderLedger();
+}
+
+function renderAll(){renderPacking();renderAdmin();renderCountdown();renderLedger();updateProgress();}
+
+// PACKING
+function renderPacking(){
+  var cont=document.getElementById('packing-cats');
+  cont.innerHTML='';
+  S.packing.forEach(function(cat){
+    var done=cat.items.filter(function(i){return i.done}).length;
+    var d=document.createElement('div');
+    d.className='card';
+    var rows=cat.items.map(function(it){
+      return '<div class="item-row'+(it.done?' done':'')+'" id="pr-'+it.id+'">'+
+        '<div class="chk'+(it.done?' on':'')+'" onclick="togglePack(\''+cat.id+'\',\''+it.id+'\')">'+
+        (it.done?'<svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>':'')+
+        '</div>'+
+        '<span class="item-text" style="flex:1;font-size:13px">'+it.text+'</span>'+
+        '<button class="btn btn-danger btn-sm" onclick="delPackItem(\''+cat.id+'\',\''+it.id+'\')">x</button>'+
+        '</div>';
+    }).join('');
+    d.innerHTML=
+      '<div class="card-header">'+
+        '<div style="display:flex;align-items:center;gap:8px">'+
+          '<span class="card-label">'+cat.name+'</span>'+
+          '<span style="font-size:10px;color:var(--muted)">'+done+'/'+cat.items.length+'</span>'+
+        '</div>'+
+        '<button class="btn btn-danger btn-sm" onclick="delPackCat(\''+cat.id+'\')">Delete Category</button>'+
+      '</div>'+
+      '<div>'+(rows||'<div style="padding:12px 16px;color:var(--muted);font-size:12px">No items yet.</div>')+'</div>'+
+      '<div class="qadd">'+
+        '<input class="inp" style="flex:1" placeholder="Add item..." id="qi-'+cat.id+'" onkeydown="if(event.key===\'Enter\')qAdd(\''+cat.id+'\')"/>'+
+        '<button class="btn btn-ghost btn-sm" onclick="qAdd(\''+cat.id+'\')">Add</button>'+
+      '</div>';
+    cont.appendChild(d);
+  });
+}
+
+function togglePack(cid,iid){
+  var cat=S.packing.find(function(c){return c.id===cid});
+  var it=cat.items.find(function(i){return i.id===iid});
+  it.done=!it.done;persist();renderPacking();
+}
+
+function qAdd(cid){
+  var inp=document.getElementById('qi-'+cid);
+  var t=inp.value.trim();if(!t)return;
+  S.packing.find(function(c){return c.id===cid}).items.push({id:g(),text:t,done:false});
+  inp.value='';persist();renderPacking();
+}
+
+function delPackItem(cid,iid){
+  var cat=S.packing.find(function(c){return c.id===cid});
+  cat.items=cat.items.filter(function(i){return i.id!==iid});
+  persist();renderPacking();
+}
+
+function addPackingCat(){
+  openModal('New Category','<input class="inp" id="m0" placeholder="e.g. Personal Care"/>',function(){
+    var v=document.getElementById('m0').value.trim();if(!v)return;
+    S.packing.push({id:g(),name:v,items:[]});persist();renderPacking();
+  });
+}
+
+function delPackCat(cid){
+  if(!confirm('Delete this category and all its items?'))return;
+  S.packing=S.packing.filter(function(c){return c.id!==cid});
+  persist();renderPacking();
+}
+
+// ADMIN
+function renderAdmin(){
+  var colors={'not-started':'var(--muted)','in-progress':'var(--warning)','done':'var(--success)'};
+  document.getElementById('admin-list').innerHTML=S.admin.map(function(it){
+    return '<div class="item-row">'+
+      '<div style="width:8px;height:8px;border-radius:50%;background:'+(colors[it.status]||'var(--muted)')+';flex-shrink:0"></div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:13px">'+it.name+'</div>'+
+        (it.notes?'<div style="font-size:11px;color:var(--muted);margin-top:1px">'+it.notes+'</div>':'')+
+      '</div>'+
+      '<select class="inp" style="width:128px;font-size:11px;padding:5px 8px" onchange="setAdminSt(\''+it.id+'\',this.value)">'+
+        '<option value="not-started"'+(it.status==='not-started'?' selected':'')+'>Not Started</option>'+
+        '<option value="in-progress"'+(it.status==='in-progress'?' selected':'')+'>In Progress</option>'+
+        '<option value="done"'+(it.status==='done'?' selected':'')+'>Done</option>'+
+      '</select>'+
+      '<button class="btn btn-danger" onclick="delAdmin(\''+it.id+'\')">x</button>'+
+      '</div>';
+  }).join('')||'<div style="padding:14px 16px;color:var(--muted);font-size:12px">No documents yet.</div>';
+}
+
+function setAdminSt(id,s){
+  S.admin.find(function(i){return i.id===id}).status=s;
+  persist();renderAdmin();updateProgress();
+}
+
+function addAdminItem(){
+  openModal('Add Document',
+    '<div style="display:flex;flex-direction:column;gap:10px">'+
+    '<input class="inp" id="m0" placeholder="Document name..."/>'+
+    '<input class="inp" id="m1" placeholder="Notes (optional)..."/>'+
+    '<select class="inp" id="m2"><option value="not-started">Not Started</option><option value="in-progress">In Progress</option><option value="done">Done</option></select>'+
+    '</div>',
+    function(){
+      var n=document.getElementById('m0').value.trim();if(!n)return;
+      S.admin.push({id:g(),name:n,notes:document.getElementById('m1').value.trim(),status:document.getElementById('m2').value});
+      persist();renderAdmin();
+    }
+  );
+}
+
+function delAdmin(id){
+  S.admin=S.admin.filter(function(i){return i.id!==id});
+  persist();renderAdmin();
+}
+
+// COUNTDOWN
+function renderCountdown(){
+  var prim=S.countdown.find(function(c){return c.primary});
+  var d=prim?daysUntil(prim.date):null;
+  document.getElementById('cd-days').textContent=d!==null?d:'---';
+  document.getElementById('cd-label').textContent=prim&&prim.date
+    ?'Until: '+prim.label+' - '+new Date(prim.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})
+    :'Set your flight date below';
+
+  var sorted=S.countdown.slice().sort(function(a,b){
+    if(!a.date)return 1;if(!b.date)return -1;
+    return new Date(a.date)-new Date(b.date);
+  });
+
+  document.getElementById('countdown-list').innerHTML=sorted.map(function(it){
+    var dd=daysUntil(it.date);
+    var c=dd===null?'var(--muted)':dd<14?'var(--danger)':dd<45?'var(--warning)':'var(--success)';
+    return '<div class="item-row" style="align-items:flex-start;gap:12px">'+
+      '<div style="font-size:28px;font-weight:700;color:'+c+';min-width:52px;text-align:right;margin-top:4px">'+(dd!==null?dd:'---')+'</div>'+
+      '<div style="flex:1">'+
+        '<div style="font-size:13px;margin-bottom:5px">'+it.label+'</div>'+
+        '<input type="date" class="inp" style="font-size:12px;padding:5px 9px" value="'+(it.date||'')+'" onchange="setCDDate(\''+it.id+'\',this.value)"/>'+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;gap:4px;margin-top:4px">'+
+        (it.primary
+          ?'<span style="font-size:9px;letter-spacing:1px;color:var(--accent)">PRIMARY</span>'
+          :'<button class="btn btn-ghost btn-sm" onclick="setPrimary(\''+it.id+'\')">Set Primary</button>')+
+        '<button class="btn btn-danger btn-sm" onclick="delCD(\''+it.id+'\')">x</button>'+
+      '</div>'+
+      '</div>';
+  }).join('');
+}
+
+function setCDDate(id,date){S.countdown.find(function(i){return i.id===id}).date=date;persist();renderCountdown();}
+function setPrimary(id){S.countdown.forEach(function(i){i.primary=(i.id===id)});persist();renderCountdown();}
+function delCD(id){S.countdown=S.countdown.filter(function(i){return i.id!==id});persist();renderCountdown();}
+
+function addCDItem(){
+  openModal('Add Key Date',
+    '<div style="display:flex;flex-direction:column;gap:10px">'+
+    '<input class="inp" id="m0" placeholder="Event name..."/>'+
+    '<input type="date" class="inp" id="m1"/>'+
+    '</div>',
+    function(){
+      var l=document.getElementById('m0').value.trim();if(!l)return;
+      S.countdown.push({id:g(),label:l,date:document.getElementById('m1').value,primary:false});
+      persist();renderCountdown();
+    }
+  );
+}
+
+// LEDGER
+function renderLedger(){
+  document.getElementById('ledger-list').innerHTML=S.ledger.map(function(r){
+    var diff=(r.act||0)-r.est;
+    var dc=diff>0?'over':diff<0?'under':'';
+    var ds=diff===0?'--':(diff>0?'+':'')+diff.toFixed(0)+'E';
+    return '<tr>'+
+      '<td>'+r.item+'</td>'+
+      '<td>'+r.est+'E</td>'+
+      '<td><input type="number" class="inp" style="width:88px;padding:4px 8px;font-size:12px" value="'+(r.act||'')+'" placeholder="0" onchange="setActual(\''+r.id+'\',this.value)"/></td>'+
+      '<td class="'+dc+'">'+ds+'</td>'+
+      '<td><button class="btn btn-danger btn-sm" onclick="delLedger(\''+r.id+'\')">x</button></td>'+
+      '</tr>';
+  }).join('');
+
+  var tEst=S.ledger.reduce(function(s,r){return s+Number(r.est)},0);
+  var tAct=S.ledger.reduce(function(s,r){return s+Number(r.act||0)},0);
+  var diff=tAct-tEst;
+  document.getElementById('ledger-foot').innerHTML=
+    '<tr style="border-top:1px solid var(--border)">'+
+    '<td style="font-size:10px;letter-spacing:1px;color:var(--muted)">TOTAL</td>'+
+    '<td style="font-weight:600">'+tEst+'E</td>'+
+    '<td style="font-weight:600">'+tAct+'E</td>'+
+    '<td style="font-weight:600" class="'+(diff>0?'over':diff<0?'under':'')+'">'+
+      (diff===0?'--':(diff>0?'+':'')+diff.toFixed(0)+'E')+'</td><td></td></tr>';
+}
+
+function setActual(id,v){S.ledger.find(function(r){return r.id===id}).act=Number(v)||0;persist();renderLedger();}
+function delLedger(id){S.ledger=S.ledger.filter(function(r){return r.id!==id});persist();renderLedger();}
+
+function addLedgerItem(){
+  openModal('Add Expense',
+    '<div style="display:flex;flex-direction:column;gap:10px">'+
+    '<input class="inp" id="m0" placeholder="Item name..."/>'+
+    '<input type="number" class="inp" id="m1" placeholder="Estimated (EUR)"/>'+
+    '<input type="number" class="inp" id="m2" placeholder="Actual (EUR) - optional"/>'+
+    '</div>',
+    function(){
+      var item=document.getElementById('m0').value.trim();if(!item)return;
+      S.ledger.push({id:g(),item:item,est:Number(document.getElementById('m1').value)||0,act:Number(document.getElementById('m2').value)||0});
+      persist();renderLedger();
+    }
+  );
+}
+
+// MODAL
+function openModal(title,html,cb){
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-body').innerHTML=html;
+  document.getElementById('modal').style.display='flex';
+  modalCb=cb;
+  setTimeout(function(){var f=document.querySelector('#modal-body input,#modal-body select');if(f)f.focus();},60);
+}
+function closeModal(){document.getElementById('modal').style.display='none';modalCb=null;}
+function modalConfirm(){if(modalCb)modalCb();closeModal();}
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
+</script>
+</body>
+</html>
